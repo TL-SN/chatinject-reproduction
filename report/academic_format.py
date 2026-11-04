@@ -16,7 +16,7 @@ from docx.text.paragraph import Paragraph
 
 
 CAPTIONS = {
-    "表 2-1": "表 2-1  ChatInject 复现实验环境与参数配置",
+    "表 2-1": "表 2-1  ChatInject 复现实验环境与任务设置",
     "表 2-2": "表 2-2  DeepSeek 模型在 AgentDojo 上的攻击效果",
     "表 2-3": "表 2-3  原论文与本次复现的攻击成功率对比",
     "表 2-4": "表 2-4  不同受试模型上的提示注入攻击效果对比",
@@ -27,7 +27,7 @@ NOTES = {
     3: "注：S1 为普通注入，S2 为原生模板 ChatInject，S3/S4 分别为 think/tool 钩子，S5 为普通多轮，S6 为多轮+ChatInject，S7 为外来模板；S1—S7 为 ASR（%），末列为无攻击 Utility（%）。",
 }
 WIDTHS = [
-    [3.3, 12.9],
+    [3.0, 13.2],
     [4.25, 2.08, 2.08, 2.08, 2.73, 2.98],
     [2.85, 2.23, 2.30, 1.70, 1.65, 2.85, 2.62],
     [2.9, 1.46, 1.46, 1.46, 1.46, 1.46, 1.46, 1.46, 2.84],
@@ -173,6 +173,22 @@ def apply_academic_format(doc):
             heading_size = 14 if p.style.name == "一级标题" else 12
             for run in p.runs:
                 set_text_run(run, heading_size, cjk="黑体")
+
+    # Keep the diagram as an inline figure with its caption (avoid a floating
+    # object or large blank frame on Microsoft Word for Mac).
+    for paragraph in doc.paragraphs:
+        if paragraph._p.xpath(".//wp:inline"):
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph.paragraph_format.first_line_indent = Pt(0)
+            paragraph.paragraph_format.space_before = Pt(4)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+            paragraph.paragraph_format.keep_with_next = True
+            paragraph.paragraph_format.keep_together = True
+        elif paragraph.text.strip().startswith("图 2-1"):
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(6)
+            paragraph.paragraph_format.keep_with_next = False
 
     # Remove log metadata from the wide DeepSeek result table; it remains
     # documented in its note and in the accompanying benchmark logs.
