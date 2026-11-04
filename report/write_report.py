@@ -229,7 +229,7 @@ def build_result_tables(doc) -> None:
 def insert_trend_paragraphs(doc) -> None:
     """2.5 结论段与 2.6 差异说明。"""
     insert_body(doc, r"2\.5", [TREND_1, TREND_2, TREND_3, TREND_4])
-    insert_body(doc, r"2\\.6", [
+    insert_body(doc, r"2\.6", [
         "复现范围方面，本次仅覆盖 AgentDojo 的三个应用域及三个额外受试模型；InjecAgent、"
         "防御评测、模板相似度、MoT 和扰动分析均未纳入复现，不能将论文原始结论视为本次实验结果。",
         "可比性方面，三个模型均不同于原论文受试版本，部分模板经人工适配；"
