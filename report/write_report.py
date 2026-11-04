@@ -6,7 +6,6 @@
 """
 
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -79,12 +78,6 @@ def clear_generated_chapters(doc) -> None:
 def main() -> None:
     dry = "--dry-run" in sys.argv
     out_path = Path("/tmp/report_dry_run.docx") if dry else DOCX_PATH
-    if not dry:
-        backup = DOCX_PATH.with_name("课程报告_原稿备份.docx")
-        if not backup.exists():
-            shutil.copy(DOCX_PATH, backup)
-            print("已备份原稿 ->", backup.name)
-
     doc = docx.Document(DOCX_PATH)
     clear_generated_chapters(doc)
     remove_placeholder_bodies(doc)
