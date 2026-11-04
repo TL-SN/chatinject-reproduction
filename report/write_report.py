@@ -12,6 +12,7 @@ from pathlib import Path
 
 import docx
 from docx.oxml.ns import qn
+from docx.shared import Pt
 
 sys.path.insert(0, str(Path(__file__).parent))
 from docx_helpers import (DOCX_PATH, find_heading, insert_body, insert_figure,
@@ -126,6 +127,15 @@ def main() -> None:
     # ---------- 2.5 / 2.6：数字与结论由 fill_results.py 阶段生成 ----------
     build_results_sections(doc)
 
+    # Keep academic formatting while avoiding isolated short final pages.
+    body_style = doc.styles["真文本正文"]
+    body_style.paragraph_format.line_spacing = 1.32
+    body_style.paragraph_format.space_after = Pt(2)
+    for heading_name in ("一级标题", "二级标题"):
+        heading_style = doc.styles[heading_name]
+        heading_style.paragraph_format.space_before = Pt(12)
+        heading_style.paragraph_format.space_after = Pt(9)
+
     doc.save(out_path)
     print("已写入", out_path)
 
@@ -225,34 +235,27 @@ CROSS_INTRO = ("为了观察模型间差异，进一步在 glm-5.3-flash 与 qwe
                "与各自的良性基线；每组攻击包含 389 个正式测试组合（表 2-4）。"
                "由于三者均不同于论文的受试模型，本对照只比较方向与相对变化。")
 
-CROSS_1 = ("qwen3.7-flash 观察到与论文方向一致的攻击增益：模板化使 ASR 由明文 5.1% 升至 9.5%，明文多轮即达 14.7%，"
-           "多轮与模板化叠加 21.6%（明文的 4.2 倍），tool 钩子进一步抬升（11.8%）；形态与论文中增益最强的 "
-           "Qwen-3 一行（17.5%→54.8%，MT+CI 80.5%）方向一致、幅度温和。外来模板 5.9% 接近明文，跨模板迁移"
-           "弱于原生，与论文的部分迁移实验方向不同，说明模板来源可能影响结果。")
+CROSS_1 = ("在 Qwen3.7-Flash 上，模板化攻击 ASR 由 5.1% 升至 9.5%，明文多轮为 14.7%，"
+           "多轮与模板结合进一步升至 21.6%，约为普通注入的 4.2 倍；工具调用钩子为 11.8%。"
+           "这一趋势与原论文 Qwen 系的结果方向一致，但模型版本与增益幅度不同。")
 
-CROSS_2 = ("与之相对，glm-5.3-flash 全部设置 ASR ≤1.3%，低于 deepseek-chat 的窄带，两者在所测配置下未观察到明显模板化攻击增益，并不意味着完全免疫。"
-           "三模型结果存在差异，但不足以区分模型训练对齐、API 端格式处理或采样设置等机制解释。攻击下 Utility 三家方向一致"
-           "（良性 87.7%~91.2% 降至 69.4%~81.2%），qwen 在 ASR 最高的多轮+模板处 Utility 亦最低（69.4%），"
-           "与论文“攻击增益伴随可用性损失”的结论相符。")
+CROSS_2 = ("相比之下，DeepSeek 的各攻击设置 ASR 为 2.8%~3.6%，GLM-5.3-Flash 为 0.3%~1.3%，"
+           "均未见明显模板化增益。三模型在相同任务集上表现不同，提示攻击效果具有模型与接口配置依赖性；"
+           "但仅凭 ASR 无法判定差异究竟来自训练、模板解析还是 API 采样参数。")
 
-TREND_1 = ("模板化增益未复现。明文基线 S1 加权 ASR 为 3.6%，原生模板 ChatInject（S2）2.8%、＋think（S3）"
-           "3.3%，全部设置处于 2.8%~3.6% 窄带，模板化未高于明文（S2 低 0.8 个百分点），banking 域全为 0；"
-           "论文六模型平均由 5.2% 升至 32.1%，本复现同口径为 −0.8，与论文中 Grok-2（16.5%→17.7%）的模式一致："
-           "模板标记不被感知为结构信号时，包裹近似纯噪声。")
+TREND_1 = ("DeepSeek 上，普通注入 ASR 为 3.6%，原生模板 ChatInject 为 2.8%，"
+           "并未出现论文报告的显著提升；银行域全部攻击设置均为 0%。"
+           "该观察限于本次具体模型与 API 配置，不能推断其具备完整防御能力。")
 
-TREND_2 = ("多轮与钩子同样未现协同放大。S5 明文多轮 2.8%、S6 多轮+ChatInject 3.1%，论文的强协同（六模型"
-           "平均 39.0%）未复现，S6 相对 S5 仅 +0.3 个百分点且低于明文基线；travel 域 S6（8.6%）较 S5（7.1%）"
-           "略升，但远小于论文量级（论文中 GLM-4.5 的 AgentDojo 多轮设置为 17.5%→48.1%）。think 钩子使 ASR 由 2.8% 升至 3.3%，＋tool "
-           "见表 2-2，均未改变格局。")
+TREND_2 = ("DeepSeek 上，明文多轮为 2.8%，多轮+ChatInject 为 3.1%，相差仅 0.3 个百分点；"
+           "think/tool 钩子分别为 3.3%/3.1%。因此本模型未观察到稳定的多轮或钩子放大效应。")
 
-TREND_3 = ("Utility 方向与论文一致。无攻击基线 91.2%，各攻击降至 74.0%~81.2%（明文多轮最低），说明无论何种"
-           "格式，注入均会挤占注意力干扰正常任务、多轮长上下文干扰更强，与论文方向一致（GLM-4.5：86.0%→"
-           "67.9%~78.4%）。分域上 travel 最脆弱（6.4%~9.3%）、banking 全零，与官方 GLM-4.5 中 slack 最脆弱"
-           "（57.1%）的分布不同——域间 ASR 主要取决于受试模型的对齐特征。")
+TREND_3 = ("DeepSeek 无攻击 Utility 为 91.2%，受到攻击后下降至 74.0%~81.2%；"
+           "Qwen3.7-Flash 的多轮+模板攻击 ASR 最高（21.6%），其 Utility 也较低（69.4%）。"
+           "这反映了攻击成功与正常任务完成能力需要同时衡量。")
 
-TREND_4 = ("外来模板迁移亦不成立。S7（Qwen-3 模板）ASR 2.8%，与原生模板（2.8%）、明文（3.6%）无可区分"
-           "差异；论文第 5 节 Qwen-3 模板对闭源模型的迁移增益（平均升至 29.6%/23.5%）未出现。结合 S2 可推断："
-           "该模型对工具输出中的模板 token——无论自家或外来——均未赋予角色权威。")
+TREND_4 = ("跨模板实验中，Qwen-3 模板攻击 DeepSeek 的 ASR 为 2.8%，与本模型原生模板相同；"
+           "但仅测试一个外来模板，不能据此否定 ChatInject 在其他模型或模板组合上的迁移性。")
 
 DIFF_SUMMARY = ("总体上，本次复现实现了三模型 × 七种攻击设置 × 每设置 389 个正式测试组合，"
                 "并补充了各模型 57 个无攻击任务；日志与评测指标可追溯至仓库中的 JSON。"
