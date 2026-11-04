@@ -22,6 +22,7 @@ from docx_helpers import (DOCX_PATH, find_heading, insert_body, insert_figure,
 SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC_DIR))
 import analyze_results as A  # noqa: E402
+from academic_format import apply_academic_format
 
 REPORT_DIR = Path(__file__).resolve().parent
 
@@ -128,35 +129,8 @@ def main() -> None:
     # ---------- 2.5 / 2.6：数字与结论由 fill_results.py 阶段生成 ----------
     build_results_sections(doc)
 
-    # Keep academic formatting while avoiding isolated short final pages.
-    body_style = doc.styles["真文本正文"]
-    body_style.font.size = Pt(11)
-    body_style.paragraph_format.line_spacing = 1.22
-    body_style.paragraph_format.space_after = Pt(1)
-    for section in doc.sections:
-        section.top_margin = Cm(1.9)
-        section.bottom_margin = Cm(1.9)
-        section.left_margin = Cm(2.2)
-        section.right_margin = Cm(2.2)
-    for heading_name in ("一级标题", "二级标题"):
-        heading_style = doc.styles[heading_name]
-        heading_style.paragraph_format.space_before = Pt(9)
-        heading_style.paragraph_format.space_after = Pt(6)
-
-    # Keep the compact cross-model comparison table from splitting between pages.
-    for p in doc.paragraphs:
-        if p.text.strip().startswith("表 2-4"):
-            p.paragraph_format.keep_with_next = True
-    if doc.tables:
-        cross_table = doc.tables[-1]
-        for i, row in enumerate(cross_table.rows):
-            tr_pr = row._tr.get_or_add_trPr()
-            if tr_pr.find(qn("w:cantSplit")) is None:
-                tr_pr.append(OxmlElement("w:cantSplit"))
-            if i < len(cross_table.rows) - 1:
-                for cell in row.cells:
-                    for para in cell.paragraphs:
-                        para.paragraph_format.keep_with_next = True
+    # Match the attached opening-report typography and master's thesis table style.
+    apply_academic_format(doc)
 
     doc.save(out_path)
     print("已写入", out_path)
