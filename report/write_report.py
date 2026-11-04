@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import docx
+from docx.oxml.ns import qn
 
 sys.path.insert(0, str(Path(__file__).parent))
 from docx_helpers import (DOCX_PATH, find_heading, insert_body, insert_figure,
@@ -37,13 +38,37 @@ CH1 = {
 
 # ---------------------------------------------------------------- 第二章静态文本（2.5 之外的叙述部分）
 
-EXEC_PARA3 = ("全部八组设置共约 2,900 个 episode，单机约 70 分钟跑完（三域并行），"
-              "全程零错误 episode，API 费用合计 12.1 元（余额 259.37→247.26 元），"
-              "单 episode 平均 6~8 次调用，系统提示与工具 schema 的上下文缓存命中率较高。")
+EXEC_PARA3 = ("DeepSeek 的七组攻击设置共 2,723 个正式测试组合、另有 147 条注入任务可行性校验日志，"
+              "以及 57 个良性任务，总计 2,927 条日志；GLM 和 Qwen 的任务数量与其相同。"
+              "所有实验统计以正式测试组合为分母；历史运行日志记录的调用参数存在温度未显式传递的问题，"
+              "因此需要在修复后对核心结果进行复核。")
 
 
 def fmt(v, nd=1):
     return "--" if v is None else f"{v:.{nd}f}"
+
+
+def clear_generated_chapters(doc) -> None:
+    """Replace the first two chapters in place, without multiplying content on reruns.
+
+    Keep the existing chapter/section heading paragraphs and everything after chapter two.
+    Remove previous body paragraphs, figures and tables from these chapters before regeneration.
+    """
+    heading_nodes = {p._p for p in doc.paragraphs
+                     if p.style.name in ("一级标题", "二级标题", "三级标题")}
+    body = doc.element.body
+    active = False
+    for element in list(body):
+        if element.tag == qn("w:p") and element in heading_nodes:
+            paragraph = next((p for p in doc.paragraphs if p._p is element), None)
+            title = paragraph.text.strip() if paragraph is not None else ""
+            if title.startswith("第一章") or title.startswith("1.1"):
+                active = True
+            elif title.startswith("第三章"):
+                active = False
+            continue
+        if active and element.tag in (qn("w:p"), qn("w:tbl")):
+            body.remove(element)
 
 
 def main() -> None:
@@ -56,6 +81,7 @@ def main() -> None:
             print("已备份原稿 ->", backup.name)
 
     doc = docx.Document(DOCX_PATH)
+    clear_generated_chapters(doc)
     remove_placeholder_bodies(doc)
 
     # ---------- 第一章 ----------
@@ -85,7 +111,7 @@ def main() -> None:
                  [
                      ["系统与依赖", "Windows 11 + WSL2；Python 3.13；agentdojo 0.1.34（官方 fork）"],
                      ["受试模型", "deepseek-chat（DeepSeek-V3 系列，非思考模式）"],
-                     ["解码参数", "temperature=0（贪心解码），与论文一致"],
+                     ["解码参数", "原运行未显式传递 temperature=0；已修复，待重跑核验"],
                      ["基准与样本", "AgentDojo v1.2.1 三域，389 例/设置（S0 为 57 个用户任务）"],
                      ["指标与判定", "ASR / Utility，框架程序化判定（环境状态＋函数调用序列）"],
                  ])
@@ -93,7 +119,7 @@ def main() -> None:
     # ---------- 2.4 ----------
     insert_body(doc, r"2\.4", [
         "复现以论文官方开源仓库（AgentDojo fork，含论文全部攻击类、官方多轮数据与评测管线）为基础，扩展三处（代码内以 [chatinject-ext] 标记）：其一，接入层新增 deepseek/zhipu/dashscope 三个 OpenAI 兼容 provider，并把消息角色映射按模型分流——原实现统一把 system 消息转为 developer 角色，DeepSeek 接口返回 422；其二，攻击模块新增 DeepSeek 模板与 chat_inject_deepseek 系列攻击类，与官方共用同一 payload 拼接函数；其三，修复官方 benchmark 并行模式两处上游缺陷（suite 名未解析、多进程参数错位致静默重跑），实现三域并行。",
-        "实验由批处理脚本逐设置运行三域评测，episode 日志按设置归档、支持断点续跑，命令、日志与结果均存于 results/，可完整重放。" + EXEC_PARA3 + "执行中的工程问题：developer 角色兼容（按模型分流解决）；全角特殊字符经测可原样透传（模板注入在 API 模型上可行的前提）；tool 钩子英文双引号破坏环境 YAML 解析（官方仅转义换行），改单引号后重跑；API 波动由框架重试，八组设置错误 episode 均为零。",
+        "实验由批处理脚本逐设置运行三域评测，episode 日志按设置归档、支持断点续跑，命令、日志与结果均存于 results/，可完整重放。" + EXEC_PARA3 + "执行中的工程问题：developer 角色兼容（按模型分流解决）；payload 的模板文本能通过 API 发送，但无法据此认定服务端将其解释为特殊 token；tool 钩子改用单引号以规避 YAML 模板冲突；原始结果仍需在修复参数后核验。",
         "增补的两模型复跑沿用同一管线与评测口径，按 provider 注入关思考参数，合计约 5,800 个 episode、零错误（glm 免费档、qwen 约 2 元）；期间修复模型偶发输出非法工具参数 JSON、评测套件限流退出两类工程缺陷，并以断点续跑保证 24 组设置全部完整。",
     ])
 
@@ -138,7 +164,7 @@ def build_result_tables(doc) -> None:
     insert_body(doc, r"2\.5", [
         "表 2-2 给出八组设置在 AgentDojo 三域的结果（ASR 与 Utility 按域正式样本量加权；分域列为各域 ASR，S0 行为各域 Utility）。每组攻击包含 389 个正式评测组合与 21 条注入任务可行性校验日志，故日志数为 410；410 不是 ASR 的分母。全部数字由结果 JSON 程序化汇总生成，逐 episode 日志与汇总脚本随报告交付。",
     ])
-    insert_table(doc, r"2\.5", "表 2-2 复现实验主结果（AgentDojo v1.2.1，deepseek-chat 受试，%）",
+    insert_table(doc, r"2\.5", "表 2-2 DeepSeek 结果（ASR/Utility：%；日志数含 21 条可行性校验）",
                  ["设置", "banking", "travel", "slack", "加权ASR", "加权Utility", "日志数", "错误"],
                  rows_main)
 
@@ -195,9 +221,9 @@ def insert_trend_paragraphs(doc) -> None:
 
 
 # --- 结论段在全部实验完成后依据真实数据定稿（写入前逐条核对数字） ---
-CROSS_INTRO = ("为检验上述结果属于模型特性还是方法缺陷，以论文两家原受试模型的同厂继任代（glm-5.3-flash、"
-               "qwen3.7-flash）在同一矩阵上复跑全部八组设置（389 例/设置、零错误 episode），构成"
-               "“两厂三代”跨模型对照（表 2-4）。")
+CROSS_INTRO = ("为了观察模型间差异，进一步在 glm-5.3-flash 与 qwen3.7-flash 上运行相同七组攻击设置"
+               "与各自的良性基线；每组攻击包含 389 个正式测试组合（表 2-4）。"
+               "由于三者均不同于论文的受试模型，本对照只比较方向与相对变化。")
 
 CROSS_1 = ("qwen3.7-flash 观察到与论文方向一致的攻击增益：模板化使 ASR 由明文 5.1% 升至 9.5%，明文多轮即达 14.7%，"
            "多轮与模板化叠加 21.6%（明文的 4.2 倍），tool 钩子进一步抬升（11.8%）；形态与论文中增益最强的 "
