@@ -6,6 +6,10 @@ on:
       - fix/reproduction-audit-2026-11-04
   workflow_dispatch:
 
+concurrency:
+  group: report-rebuild-review
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -34,11 +38,38 @@ jobs:
                   raise SystemExit(f'Missing report content: {expected}')
           print('Report generated with', len(document.paragraphs), 'paragraphs and', len(document.tables), 'tables')
           PY
+      - name: Render Word document and review page count
+        run: |
+          command -v libreoffice || (sudo apt-get update -qq && sudo apt-get install -y -qq libreoffice-writer poppler-utils)
+          python -m pip install 'Pillow>=10,<12'
+          mkdir -p /tmp/word-review
+          libreoffice -env:UserInstallation=file:///tmp/lo-review --headless --convert-to pdf --outdir /tmp/word-review '课程报告.docx'
+          pdfinfo '/tmp/word-review/课程报告.pdf' | grep '^Pages:' | tee report/review_layout.txt
+          pdftoppm -r 55 -png '/tmp/word-review/课程报告.pdf' /tmp/word-review/page >/dev/null 2>&1
+          python - <<'PY'
+          from PIL import Image, ImageOps, ImageDraw
+          from pathlib import Path
+          pages = sorted(Path('/tmp/word-review').glob('page-*.png'))
+          if not pages:
+              raise SystemExit('No PDF pages rendered')
+          cell_w, cell_h = 600, 850
+          canvas = Image.new('RGB', (cell_w*2, cell_h*((len(pages)+1)//2)), '#dddddd')
+          draw = ImageDraw.Draw(canvas)
+          for i, page in enumerate(pages):
+              img = Image.open(page).convert('RGB')
+              img.thumbnail((cell_w-25, cell_h-45))
+              x=(i%2)*cell_w+(cell_w-img.width)//2
+              y=(i//2)*cell_h+30
+              canvas.paste(img,(x,y))
+              draw.text(((i%2)*cell_w+12,(i//2)*cell_h+8),f'Page {i+1}',fill='#111111')
+          canvas.save('report/review_contact.png',optimize=True)
+          print('Rendered',len(pages),'pages')
+          PY
       - name: Commit refreshed Word document to review branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- '课程报告.docx'
+          git add -- '课程报告.docx' report/review_contact.png report/review_layout.txt
           if ! git diff --cached --quiet; then
             git commit -m "docs: regenerate reviewed Word course report"
             git push
