@@ -14,9 +14,13 @@ set -u
 cd "$(dirname "$0")"
 
 # ---- 从 api_key.txt 导出全部已配置的 key（缺哪个自动跳过对应模型）----
-export DEEPSEEK_API_KEY=$(grep '^deepseek:' ../api_key.txt 2>/dev/null | head -1 | cut -d':' -f2- | tr -d ' ')
-export ZHIPU_API_KEY=$(grep -E '^(glm|zhipu):' ../api_key.txt 2>/dev/null | head -1 | cut -d':' -f2- | tr -d ' ')
-export DASHSCOPE_API_KEY=$(grep -E '^(qwen|dashscope):' ../api_key.txt 2>/dev/null | head -1 | cut -d':' -f2- | tr -d ' ')
+# Respect explicitly configured environment variables; fall back to the local key file.
+if [[ -f ../api_key.txt ]]; then
+  DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-$(grep '^deepseek:' ../api_key.txt | head -1 | cut -d':' -f2- | tr -d ' ')}
+  ZHIPU_API_KEY=${ZHIPU_API_KEY:-$(grep -E '^(glm|zhipu):' ../api_key.txt | head -1 | cut -d':' -f2- | tr -d ' ')}
+  DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-$(grep -E '^(qwen|dashscope):' ../api_key.txt | head -1 | cut -d':' -f2- | tr -d ' ')}
+fi
+export DEEPSEEK_API_KEY ZHIPU_API_KEY DASHSCOPE_API_KEY
 
 # ---- 选择受试模型（默认 deepseek），并按模型选对应的"原生模板"攻击矩阵 ----
 MODEL=${MODEL:-deepseek}
@@ -50,7 +54,9 @@ case "$MODEL" in
 esac
 echo "受试模型: $MODEL_NAME ($MODEL_ENUM)"
 
-PY=/home/tlsn/.venvs/chatinject/bin/python
+# Use a configurable interpreter instead of a developer-specific absolute path.
+PY=${CHATINJECT_PYTHON:-$HOME/.venvs/chatinject/bin/python}
+if [[ ! -x "$PY" ]]; then PY=$(command -v python3); fi
 RES=../results
 
 run_attack () {  # $1=attack name
