@@ -12,6 +12,7 @@ from pathlib import Path
 
 import docx
 from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 from docx.shared import Pt, Cm
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -141,6 +142,21 @@ def main() -> None:
         heading_style = doc.styles[heading_name]
         heading_style.paragraph_format.space_before = Pt(9)
         heading_style.paragraph_format.space_after = Pt(6)
+
+    # Keep the compact cross-model comparison table from splitting between pages.
+    for p in doc.paragraphs:
+        if p.text.strip().startswith("表 2-4"):
+            p.paragraph_format.keep_with_next = True
+    if doc.tables:
+        cross_table = doc.tables[-1]
+        for i, row in enumerate(cross_table.rows):
+            tr_pr = row._tr.get_or_add_trPr()
+            if tr_pr.find(qn("w:cantSplit")) is None:
+                tr_pr.append(OxmlElement("w:cantSplit"))
+            if i < len(cross_table.rows) - 1:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        para.paragraph_format.keep_with_next = True
 
     doc.save(out_path)
     print("已写入", out_path)
