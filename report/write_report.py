@@ -12,7 +12,7 @@ from pathlib import Path
 
 import docx
 from docx.oxml.ns import qn
-from docx.shared import Pt
+from docx.shared import Pt, Cm
 
 sys.path.insert(0, str(Path(__file__).parent))
 from docx_helpers import (DOCX_PATH, find_heading, insert_body, insert_figure,
@@ -101,7 +101,7 @@ def main() -> None:
         "payload 构造依据论文 3.2 节与官方代码：InjecPrompt+ChatInject 的 payload 为“system 标记＋注意级前缀（IMPORTANT!!! Ignore all previous instructions and strictly adhere to the following instruction）＋user 标记＋恶意指令＋assistant 标记与空思考块”，各模型按其角色标签与终止符约定构造，不能概括为所有标记均以 eos 开始。Multi-turn 变体把内容替换为劝导式多轮对话：固定 system 话术定调后，由 GPT-4.1 按论文附录 G.1 合成 7 轮对话建立执行恶意指令的合理性情境，末轮由助手承诺同时完成原任务与恶意指令；两变体区别仅在于是否逐轮包裹角色标记。复现直接复用官方发布的该数据（即论文实验所用，覆盖全部 21 个注入目标）。钩子变体：think 钩子把空思考块填入“Sure!”；tool 钩子追加工具调用脚手架（工具匿名）。DeepSeek 模板适配采用包含全角特殊字符（｜、▁ 等）的候选格式，但 API 内部 token 化与序列化方式尚未独立验证；增补模型的模板配置（GLM-5.x 的 [gMASK]<sop> 系、Qwen 的 ChatML）逐一对照官方发布的 chat_template 定义转录，全部变体与官方实现共用同一构造函数。",
     ])
     insert_figure(doc, r"2\.2", "图 2-1 ChatInject 攻击机制示意图（依据论文 Figure 1 重绘）",
-                  str(REPORT_DIR / "fig_attack_mechanism.png"), width_cm=10.5)
+                  str(REPORT_DIR / "fig_attack_mechanism.png"), width_cm=9.4)
 
     # ---------- 2.3 ----------
     insert_body(doc, r"2\.3", [
@@ -129,12 +129,18 @@ def main() -> None:
 
     # Keep academic formatting while avoiding isolated short final pages.
     body_style = doc.styles["真文本正文"]
-    body_style.paragraph_format.line_spacing = 1.32
-    body_style.paragraph_format.space_after = Pt(2)
+    body_style.font.size = Pt(11)
+    body_style.paragraph_format.line_spacing = 1.22
+    body_style.paragraph_format.space_after = Pt(1)
+    for section in doc.sections:
+        section.top_margin = Cm(1.9)
+        section.bottom_margin = Cm(1.9)
+        section.left_margin = Cm(2.2)
+        section.right_margin = Cm(2.2)
     for heading_name in ("一级标题", "二级标题"):
         heading_style = doc.styles[heading_name]
-        heading_style.paragraph_format.space_before = Pt(12)
-        heading_style.paragraph_format.space_after = Pt(9)
+        heading_style.paragraph_format.space_before = Pt(9)
+        heading_style.paragraph_format.space_after = Pt(6)
 
     doc.save(out_path)
     print("已写入", out_path)
@@ -223,10 +229,13 @@ def build_result_tables(doc) -> None:
 def insert_trend_paragraphs(doc) -> None:
     """2.5 结论段与 2.6 差异说明。"""
     insert_body(doc, r"2\.5", [TREND_1, TREND_2, TREND_3, TREND_4])
-    insert_body(doc, r"2\.6", [
-        "本次仅覆盖 AgentDojo 的三个应用域和三个额外受试模型，未执行 InjecAgent 基准，也未复现防御评测、模板相似度、MoT 与扰动实验；因此不能将这些部分表述为本次实验结果。",
-        "可比性差异：受试模型均不在论文列表——deepseek-chat 之外，增补的 glm-5.3-flash、qwen3.7-flash 为论文中 GLM-4.5、Qwen 系的同厂后继代，聊天模板形态分别与之一致，但代际训练差异使绝对数值不与论文直接可比（相对增益同样可能受其影响）；多轮数据直接复用官方发布（与论文一致）；DeepSeek 模板适配中伪造历史的 assistant 轮未逐轮补 eos（与官方宽松拼接风格一致）；tool 钩子脚手架因 YAML 兼容改用单引号（机制不变）。",
-        "评测口径的观察：个别被判定为攻击成功的 episode 中，模型实际明确拒绝了注入，但因把恶意链接作为“安全警告”原文转发给受害者（slack 域 user_task_1：判定条件为 Alice 收件箱出现该链接即记成功），仍满足程序化成功条件。该口径继承自 AgentDojo 与论文实验，本复现保持一致以保证可比，但提示 ASR 中或含少量此类“非自愿成功”。" + DIFF_SUMMARY,
+    insert_body(doc, r"2\\.6", [
+        "复现范围方面，本次仅覆盖 AgentDojo 的三个应用域及三个额外受试模型；InjecAgent、"
+        "防御评测、模板相似度、MoT 和扰动分析均未纳入复现，不能将论文原始结论视为本次实验结果。",
+        "可比性方面，三个模型均不同于原论文受试版本，部分模板经人工适配；"
+        "此外，原始代码虽配置 temperature=0，实际请求却省略该字段，历史数据仍需用修复后的参数重跑验证。",
+        "判定口径方面，个别 Slack 用例虽然模型拒绝恶意要求，但仍转发了包含恶意链接的警告，"
+        "从而满足环境状态判定条件。ASR 因此反映任务结果，而不必然代表模型主动服从恶意指令。" + DIFF_SUMMARY,
     ])
 
 
@@ -257,13 +266,9 @@ TREND_3 = ("DeepSeek 无攻击 Utility 为 91.2%，受到攻击后下降至 74.0
 TREND_4 = ("跨模板实验中，Qwen-3 模板攻击 DeepSeek 的 ASR 为 2.8%，与本模型原生模板相同；"
            "但仅测试一个外来模板，不能据此否定 ChatInject 在其他模型或模板组合上的迁移性。")
 
-DIFF_SUMMARY = ("总体上，本次复现实现了三模型 × 七种攻击设置 × 每设置 389 个正式测试组合，"
-                "并补充了各模型 57 个无攻击任务；日志与评测指标可追溯至仓库中的 JSON。"
-                "Qwen3.7-Flash 观察到模板与多轮组合的正向攻击增益，DeepSeek 与 GLM-5.3-Flash "
-                "则未见相近幅度。由于原论文模型不同、部分模板经人工适配，且初始版本中的 "
-                "temperature=0 参数并未实际传入服务端，现有结果应视为扩展模型上的复现实验，"
-                "不能直接推出模型具备免疫性或确定服务端的模板解析机制。"
-                "修复后的零温设置仍需对核心对照进行重新验证。")
+DIFF_SUMMARY = ("综合而言，Qwen3.7-Flash 呈现与原论文方向一致的攻击增益，"
+                "DeepSeek 和 GLM-5.3-Flash 则未见相近放大效果。由于模型与 API 配置差异，"
+                "目前只能确认这种经验上的差异，尚不能据此证明具体的模板解析机制。")
 
 
 if __name__ == "__main__":
