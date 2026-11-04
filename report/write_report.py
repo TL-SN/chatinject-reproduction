@@ -24,6 +24,7 @@ sys.path.insert(0, str(SRC_DIR))
 import analyze_results as A  # noqa: E402
 from academic_format import apply_academic_format
 from readability_revision import apply_readability_revision
+from three_model_results import apply_three_model_report
 
 REPORT_DIR = Path(__file__).resolve().parent
 
@@ -137,6 +138,7 @@ def main() -> None:
     # Match the attached opening-report typography and master's thesis table style.
     apply_academic_format(doc)
     apply_readability_revision(doc)
+    apply_three_model_report(doc)
 
     doc.save(out_path)
     print("已写入", out_path)
