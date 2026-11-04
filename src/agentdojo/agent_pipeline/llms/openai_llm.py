@@ -183,7 +183,7 @@ def chat_completion_request(
         messages=messages,
         tools=tools or NOT_GIVEN,
         tool_choice="auto" if tools else NOT_GIVEN,
-        temperature=temperature or NOT_GIVEN,
+        temperature=temperature if temperature is not None else NOT_GIVEN,
         reasoning_effort=reasoning_effort or NOT_GIVEN,
         extra_body=extra_body or None,
     )
