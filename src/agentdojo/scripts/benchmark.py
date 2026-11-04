@@ -412,6 +412,14 @@ def main(
         eval_results_path = os.path.join(eval_results_dir, "combined.json") if eval_results_dir is not None else None
         show_results("combined", combined_results, attack is not None, eval_results_path)
 
+    # [chatinject-ext] Do not report success for a run with missing/failed suites.
+    failed_suites = [name for name, result in zip(suites, results) if result is None]
+    if failed_suites:
+        raise click.ClickException(
+            "Incomplete benchmark: failed suites " + ", ".join(failed_suites)
+            + ". Rerun with the same logdir to resume completed episodes."
+        )
+
 
 if __name__ == "__main__":
     format = "%(message)s"

@@ -62,7 +62,7 @@ tail -f ../results/logs/batch.log                                   # 看进度
 
 > 注：glm-5.3-flash 走智谱免费档，服务端限并发（~10–14 路请求、聚合 ~20 集/分钟），若 suite 因 429
 > 阵亡会打印 `Suite ... FAILED`，**重跑同一命令即可断点续跑**（已有 episode 自动跳过）。
-> qwen3.7-flash 无明显限流，约 85 分钟跑完全部设置。
+> qwen3.7-flash 的历史运行约 85 分钟。批量脚本现已在任一 suite 失败时返回非零状态，避免误报“全部完成”。
 
 单组运行示例：
 
@@ -79,7 +79,7 @@ export DEEPSEEK_API_KEY=$(grep '^deepseek:' ../api_key.txt | cut -d':' -f2 | tr 
 
 说明：
 - 结果按 suite 写入 `--eval-results-dir`（banking/travel/slack.json），字段与官方 eval_results 一致（average_asr / utility_under_attack）
-- episode 级日志在 logs/ 下，**同 logdir 重跑会跳过已完成的 episode（断点续跑）**，`--force-rerun` 强制全量重跑
+- episode 级日志在 logs/ 下，**同 logdir 重跑会跳过已完成的 episode（断点续跑）；若改动模型请求参数，应使用新的 logdir 或强制重跑，不要把新旧配置的日志混入同一组结果**，`--force-rerun` 强制全量重跑
 - 可用攻击列表：`~/.venvs/chatinject/bin/python -c "from agentdojo.attacks.attack_registry import ATTACKS; print(sorted(ATTACKS))"`
 
 ## 五、查看与汇总结果
@@ -94,7 +94,7 @@ cd src && ~/.venvs/chatinject/bin/python analyze_results.py --compare   # 三模
 
 ## 六、实验矩阵（与论文对应关系）
 
-三个受试模型共用同一矩阵（8 设置 × 389 例），仅"原生模板/外来模板"两列按模型替换：
+三个受试模型共用同一矩阵（7 种攻击设置 × 389 例 + 1 组良性基线 × 57 例），仅"原生模板/外来模板"两列按模型替换：
 
 | 运行目录前缀 | 原生模板攻击 | 外来模板攻击 |
 |---|---|---|
@@ -117,15 +117,15 @@ cd src && ~/.venvs/chatinject/bin/python analyze_results.py --compare   # 三模
 
 ## 七、注意事项（交接给下一位同学）
 
-1. 论文实验均经 OpenRouter 调用（temperature=0）；我们改为官方 API 直连，`get_llm` 中温度固定 0，与论文一致。
+1. 论文实验经 OpenRouter 调用（temperature=0）；本项目改为官方 API 直连。审查发现历史版本在 `chat_completion_request()` 中使用了 `temperature or NOT_GIVEN`，导致零温参数在请求中被省略，服务端实际采样配置无法由现有日志证明。该问题已修复，**旧实验不应宣称与论文完全采用同一温度配置；修复后的结果仍需重跑确认**。
 2. 官方仓库 `benchmark.py` 的 `--max-workers` 并行模式有多处上游 bug（suite 未解析、starmap 参数错位、
    suite 级异常炸整个 CLI），均已修复（`[chatinject-ext]` 标记），勿回退。
 3. `openai_llm.py` 中 system→developer 角色映射对 DeepSeek 等 API 不兼容，已按模型名分流；
    工具调用参数 JSON 容错（qwen3.7-flash 偶发输出坏 JSON）与 `extra_body` 透传（zhipu/dashscope 关思考
    参数）同样在此文件。
 4. DeepSeek 模板特殊字符为全角（`｜` U+FF5C、`▁` U+2581），编辑 `baseline_attacks.py` 时注意别被输入法/编辑器替换为半角。
-5. **已执行的实验**：2026-11-03 deepseek-chat 8 组（2,887 episode、零错误、¥12.11）；2026-11-04 增补
-   glm-5.3-flash 与 qwen3.7-flash 各 8 组（glm 免费、qwen 约 ¥2，两模型合计约 5,800 episode、零错误）。
+5. **已执行的实验**：2026-11-03 deepseek-chat 7 组攻击 + 1 组良性（2,723 正式攻击组合 + 147 条可行性校验 + 57 条良性任务 = 2,927 条日志、零错误、¥12.11）；2026-11-04 增补
+   glm-5.3-flash 与 qwen3.7-flash 各 8 组（glm 免费、qwen 约 ¥2，两模型合计 5,854 条日志（正式攻击组合共 5,446 个）、零错误）。
    三模型汇总与执行过程见 `results/执行记录.md`。
 6. 复现不含 InjecAgent 基准与防御评测（官方未放出对应代码）；如需扩展见 `课程报告.docx` 2.6 节差异说明。
 7. 论文原模型已不可用：glm-4.5 平台下线（现服务名 glm-5.3/glm-5.3-flash）、qwen3-235b-a22b 已从百炼
@@ -134,3 +134,13 @@ cd src && ~/.venvs/chatinject/bin/python analyze_results.py --compare   # 三模
    模板配置（对照官方 tokenizer 的 chat_template.jinja 转录，参考 `glm5` 条目注释）。
 8. 两条 API 工程事实（踩过的坑）：zhipu 免费档限并发导致 429 时，重跑同一命令即可断点续跑；
    dashscope 千问关思考用 `enable_thinking:false`、zhipu 用 `thinking:{"type":"disabled"}`（已内置）。
+
+## 八、审计修复与复跑提醒（2026-11-04）
+
+- **统计分母**：每个攻击设置的正式 ASR/Utility 分母均为 389，文件总数 410 中有额外 21 条注入目标可行性校验日志；无攻击基线为 57。单模型共 2,927 条日志，三模型共 8,781 条。
+- **采样参数**：修复前 `temperature=0` 没有真正发送给 API；因此现有结果代表历史请求配置，不能直接宣称“贪心解码严格复现”。需重新执行至少 S1/S2/S5/S6 核心对照，并保存模型 API 响应的实际模型标识与采样配置。
+- **调用与统计**：修复了单次 runner 的 `extra_body` 参数转发，以及对已经是百分数的 ASR/Utility 再乘 100 的错误；历史 DeepSeek 良性汇总文件的 9122.81% 修正为 91.23%。
+- **状态完整性**：基准测试某 suite 失败时将返回非零退出码，批处理脚本累计失败数量并以非零状态结束。
+- **结论范围**：报告只讨论所测模型与 API 的观察结果；“模型免疫”“服务端过滤 token”“模板结构识别是必要条件”均没有独立证据，暂不作为已证明的机制结论。
+- **文件生成**：修改源数据或报告代码后，通过 `python report/write_report.py` 重新生成根目录的 `课程报告.docx`，并进行 Word/PDF 排版检查。
+- **静态一致性检查**：执行 `python src/check_results.py` 验证三模型的样本量、日志文件数量与成功数计算。

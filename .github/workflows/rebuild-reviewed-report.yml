@@ -1,0 +1,76 @@
+name: Rebuild reviewed course report
+
+on:
+  push:
+    branches:
+      - fix/reproduction-audit-2026-11-04
+  workflow_dispatch:
+
+concurrency:
+  group: report-rebuild-review
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install document dependency
+        run: python -m pip install 'python-docx>=1.1,<2'
+      - name: Validate saved benchmark data
+        run: python src/check_results.py
+      - name: Rebuild Word report from results
+        run: python report/write_report.py
+      - name: Ensure report has expected sections
+        run: |
+          python - <<'PY'
+          from docx import Document
+          document = Document('课程报告.docx')
+          text = '\n'.join(p.text for p in document.paragraphs)
+          for expected in ('第一章', '第二章', 'Qwen3.7', 'DeepSeek-V4-Flash', '21.6%'):
+              if expected not in text:
+                  raise SystemExit(f'Missing report content: {expected}')
+          print('Report generated with', len(document.paragraphs), 'paragraphs and', len(document.tables), 'tables')
+          PY
+      - name: Render Word document and review page count
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libreoffice-writer poppler-utils fonts-noto-cjk
+          python -m pip install 'Pillow>=10,<12'
+          mkdir -p /tmp/word-review
+          libreoffice -env:UserInstallation=file:///tmp/lo-review --headless --convert-to pdf --outdir /tmp/word-review '课程报告.docx'
+          pdfinfo '/tmp/word-review/课程报告.pdf' | grep '^Pages:' | tee report/review_layout.txt
+          pdftoppm -r 55 -png '/tmp/word-review/课程报告.pdf' /tmp/word-review/page >/dev/null 2>&1
+          python - <<'PY'
+          from PIL import Image, ImageOps, ImageDraw
+          from pathlib import Path
+          pages = sorted(Path('/tmp/word-review').glob('page-*.png'))
+          if not pages:
+              raise SystemExit('No PDF pages rendered')
+          cell_w, cell_h = 600, 850
+          canvas = Image.new('RGB', (cell_w*2, cell_h*((len(pages)+1)//2)), '#dddddd')
+          draw = ImageDraw.Draw(canvas)
+          for i, page in enumerate(pages):
+              img = Image.open(page).convert('RGB')
+              img.thumbnail((cell_w-25, cell_h-45))
+              x=(i%2)*cell_w+(cell_w-img.width)//2
+              y=(i//2)*cell_h+30
+              canvas.paste(img,(x,y))
+              draw.text(((i%2)*cell_w+12,(i//2)*cell_h+8),f'Page {i+1}',fill='#111111')
+          canvas.save('report/review_contact.png',optimize=True)
+          print('Rendered',len(pages),'pages')
+          PY
+      - name: Commit refreshed Word document to review branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '课程报告.docx' report/review_contact.png report/review_layout.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: regenerate reviewed Word course report"
+            git push
+          fi
