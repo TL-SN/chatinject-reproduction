@@ -67,34 +67,45 @@ run_attack () {  # $1=attack name
   echo "[$(date '+%F %T')] DONE attack=$atk (exit=$ec)"
 }
 
-# 第一波：核心四变体（论文 Table 1 的四列），两两并行
-run_attack "injecagent" &
-run_attack "$CI_NATIVE" &
-wait
-run_attack "injecagent_with_utility_system_multiturn_7" &
-run_attack "$MT_NATIVE" &
-wait
+# [chatinject-ext] Detect incomplete experiments even when runs are started in parallel.
+# The benchmark CLI now exits nonzero if any suite fails.
+failures=0
+run_pair() {
+  run_attack "$1" &
+  local pid1=$!
+  run_attack "$2" &
+  local pid2=$!
+  wait "$pid1" || failures=$((failures + 1))
+  wait "$pid2" || failures=$((failures + 1))
+}
 
-# 第二波：外来模板迁移（与原生不同家的模板）+ 钩子
+# 第一波：核心四变体（两组并行）
+run_pair "injecagent" "$CI_NATIVE"
+run_pair "injecagent_with_utility_system_multiturn_7" "$MT_NATIVE"
+
+# 第二波：外来模板迁移 + 钩子
 case "$MODEL" in
-  deepseek) FOREIGN=chat_inject_qwen3 ;;   # qwen3 模板 → deepseek
-  zhipu)    FOREIGN=chat_inject_qwen3 ;;   # qwen3 模板 → glm（亦可用 chat_inject_kimi_k2）
-  qwen)     FOREIGN=chat_inject_glm ;;     # glm 模板 → qwen
-  glm5f)    FOREIGN=chat_inject_qwen3 ;;   # qwen3 模板 → glm-5.3-flash
-  qwen37f)  FOREIGN=chat_inject_glm ;;     # glm 模板 → qwen3.7-flash
+  deepseek|zhipu|glm5f) FOREIGN=chat_inject_qwen3 ;;
+  qwen|qwen37f) FOREIGN=chat_inject_glm ;;
 esac
-run_attack "$FOREIGN" &
-run_attack "$CI_TOOL" &
-wait
+run_pair "$FOREIGN" "$CI_TOOL"
 run_attack "$CI_THINK" &
+think_pid=$!
 
-# 无攻击 benign utility 基线（仅 57 个用户任务，串行收尾）
+# 无攻击 benign utility 基线
 $PY -m agentdojo.scripts.benchmark \
     --model "$MODEL_ENUM" \
     -s banking -s travel -s slack \
     --max-workers 3 \
     --logdir "$RES/${MODEL_NAME}_noattack/logs" \
     --eval-results-dir "$RES/${MODEL_NAME}_noattack"
-echo "[$(date '+%F %T')] DONE noattack (exit=$?)"
-wait
+benign_status=$?
+if [ "$benign_status" -ne 0 ]; then
+  failures=$((failures + 1))
+fi
+wait "$think_pid" || failures=$((failures + 1))
+if [ "$failures" -ne 0 ]; then
+  echo "[$(date '+%F %T')] INCOMPLETE: $failures run(s) failed; rerun to resume." >&2
+  exit 1
+fi
 echo "[$(date '+%F %T')] ALL RUNS COMPLETE"
