@@ -55,10 +55,10 @@ def install_usage_tracker(log_path: Path) -> dict:
     usage = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
              "prompt_cache_hit_tokens": 0, "errors": 0}
 
-    def wrapped(client, model, messages, tools, reasoning_effort, temperature=0.0):
+    def wrapped(client, model, messages, tools, reasoning_effort, temperature=0.0, extra_body=None):
         try:
             resp = openai_llm._orig_chat_completion_request(
-                client, model, messages, tools, reasoning_effort, temperature)
+                client, model, messages, tools, reasoning_effort, temperature, extra_body)
         except Exception:
             usage["errors"] += 1
             raise
@@ -171,10 +171,10 @@ def main() -> None:
     }
     if tot_util:
         summary["utility_pct_weighted"] = round(
-            100 * sum(r["utility_pct"] * r["n_utility"] for r in all_results.values()) / tot_util, 2)
+            sum(r["utility_pct"] * r["n_utility"] for r in all_results.values()) / tot_util, 2)
     if tot_sec:
         summary["asr_pct_weighted"] = round(
-            100 * sum(r["asr_pct"] * r["n_security"] for r in all_results.values()) / tot_sec, 2)
+            sum(r["asr_pct"] * r["n_security"] for r in all_results.values()) / tot_sec, 2)
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
     flush_usage(usage, usage_log)
     print(json.dumps({k: v for k, v in summary.items() if k != "per_suite"}, ensure_ascii=False, indent=2))
