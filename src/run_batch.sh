@@ -65,6 +65,7 @@ run_attack () {  # $1=attack name
       --eval-results-dir "$RES/${MODEL_NAME}_${atk}"
   ec=$?
   echo "[$(date '+%F %T')] DONE attack=$atk (exit=$ec)"
+  return "$ec"
 }
 
 # [chatinject-ext] Detect incomplete experiments even when runs are started in parallel.
