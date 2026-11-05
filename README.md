@@ -2,7 +2,9 @@
 
 本仓库用于《信息论》课程的 ChatInject 论文复现与分析。我们在作者提供的 AgentDojo 代码基础上，接入了三家模型 API，保存了已有实验轨迹，并编写了课程报告。**首次接手建议先复核已有结果，不要直接启动大规模付费实验。**
 
-**入口**： [课程报告](课程报告.docx) · [详细实验手册](src/README.md) · [实验执行记录](results/执行记录.md) · [原论文与课堂资料](文章参考/) · [官方 ChatInject 仓库](https://github.com/hwanchang00/chatinject)
+**入口**： [详细实验手册](src/README.md) · [实验执行记录](results/执行记录.md) · [原论文与课堂资料](文章参考/) · [官方 ChatInject 仓库](https://github.com/hwanchang00/chatinject)
+
+> 课程报告（`课程报告.docx`）**不入库**，由复现负责人直接分发给组员；本仓库仅包含报告的生成代码（`report/`）。
 
 ## 1. 目录与分工
 
@@ -17,7 +19,7 @@
 | `data/official_eval_results/` | 论文作者公开的参考实验数据 |
 | `文章参考/` | 论文与课堂汇报材料 |
 | `claude-dialogue-session.txt` | 复现负责人的 AI 辅助工作对话导出（见第 7 节） |
-| `课程报告.docx` | 小组课程报告主文件；修改前先创建自己的本地副本 |
+| `课程报告.docx` | 不入库（负责人直接分发）；本地修改前先创建副本 |
 
 建议组员先阅读第 2 章实验复现，再重点看 `src/agentdojo/attacks/baseline_attacks.py` 和 `src/README.md`。
 
