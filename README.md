@@ -4,7 +4,7 @@
 
 **入口**： [详细实验手册](src/README.md) · [实验执行记录](results/执行记录.md) · [原论文与课堂资料](文章参考/) · [官方 ChatInject 仓库](https://github.com/hwanchang00/chatinject)
 
-> 课程报告（`课程报告.docx`）及其生成代码（`report/`）均**不入库**，由复现负责人在本地维护并直接分发给组员。
+> 课程报告（`课程报告.docx`）**不入库**，由宇轩在本地维护并直接分发给组员。
 
 ## 1. 目录与分工
 
@@ -17,7 +17,7 @@
 | `results/` | 已完成测试的分域汇总 JSON、episode 轨迹及执行记录 |
 | `data/official_eval_results/` | 论文作者公开的参考实验数据 |
 | `文章参考/` | 论文与课堂汇报材料 |
-| `claude-dialogue-session.txt` | 复现负责人的 AI 辅助工作对话导出（见第 7 节） |
+| `claude-dialogue-session.txt` | 宇轩的 AI 辅助工作对话导出（见第 7 节） |
 
 建议组员先阅读第 2 章实验复现，再重点看 `src/agentdojo/attacks/baseline_attacks.py` 和 `src/README.md`。
 
@@ -28,7 +28,7 @@
 | 理解论文、准备课程汇报 | `文章参考/`、报告第一和第二章 | 论文总结、问题分析 |
 | 复核已完成的实验 | `python src/check_results.py`、`python src/analyze_results.py --compare` | 经核验的 ASR / Utility 表格，说明统计口径 |
 | 继续改进攻击或做防御实验 | `src/agentdojo/attacks/`、`src/run_batch.sh` | 独立配置的新增日志、对照结果和代码改动 |
-| 撰写或修改课程报告 | 联系负责人获取 `课程报告.docx` 与 `report/`（均不入库） | 修改后的 Word 文档及说明 |
+| 撰写或修改课程报告 | 联系宇轩获取 `课程报告.docx`（不入库） | 修改后的 Word 文档及说明 |
 
 完整实验日志已经在仓库里，**刚接手时不要重复执行所有付费实验**。如需要进行新的模型对照，先固定模型版本和参数，用独立输出路径保存结果。
 
@@ -52,7 +52,7 @@ python src/analyze_results.py --compare
 
 成功后可以看到三个模型的汇总统计与论文参考数据。**建议优先在已保存的 JSON 上完成结果分析和图表制作**，不必每次重新请求模型。
 
-课程报告（`课程报告.docx`）及其生成脚本不在仓库中，由负责人在本地维护和重新生成；组员如需修改报告，请直接联系负责人。第三章及以后的组员内容不会被报告生成流程覆盖。
+课程报告（`课程报告.docx`）不在仓库中，由宇轩在本地维护和更新；组员如需修改报告，请直接联系宇轩。第三章及以后的组员内容不受影响。
 
 ## 3. 实验设计与已有结果
 
@@ -124,14 +124,14 @@ cd ..
 - **安装后找不到 `agentdojo`**：请先 `cd src` 再运行 `python -m agentdojo.scripts.benchmark`，或执行仓库根目录的脚本入口。
 - **429 / RateLimitError**：服务商限流；检查失败日志后重试。批处理可复用相同日志目录断点续跑，但应先确认参数未变。
 - **389 vs 410**：389 是正式 ASR 评测分母，410 是包含 21 条可行性校验的日志数，不应直接使用 410 计算 ASR。
-- **报告和 JSON 不一致**：报告数值由生成脚本从结果 JSON 程序化计算（脚本由负责人维护）。先核对 `results/执行记录.md` 和 `python src/analyze_results.py` 的输出，确认是哪一版数据后再找负责人更新报告。
+- **报告和 JSON 不一致**：报告数值由生成脚本从结果 JSON 程序化计算（由宇轩维护）。先核对 `results/执行记录.md` 和 `python src/analyze_results.py` 的输出，确认是哪一版数据后由宇轩更新报告。
 - **模型名称变化**：首先检查 `src/agentdojo/models.py` 与真实 API 响应，不要直接把 provider 的模型别名当成固定版本。
 
 组员修改时优先新开分支，通过 Pull Request 合并；对结果、报告和代码都保留可追溯记录。
 
 ## 7. 复现工作对话记录（`claude-dialogue-session.txt`）
 
-本文件是复现负责人使用 Claude Code（AI 编程助手）完成本项目的**完整对话导出**（约 2026-11-04 至 11-05 的会话，更早的 deepseek-chat 首轮复现不在其中），内容覆盖：
+本文件是宇轩使用 Claude Code（AI 编程助手）完成本项目的**完整对话导出**（约 2026-11-04 至 11-05 的会话，更早的 deepseek-chat 首轮复现不在其中），内容覆盖：
 
 - **增补两个模型的接入全过程**：GLM-5.x 模板对照官方 chat_template.jinja 逐字符转录（`glm5` 配置）、Qwen3.7 关思考参数（`enable_thinking:false`）、跨 provider 的 `extra_body` 透传
 - **实验执行与排障实录**：zhipu 免费档限流的探测与应对（服务端聚合吞吐恒定 ~20 集/分钟，多开并发无用）、qwen3.7-flash 偶发输出坏工具参数 JSON 导致并行池崩溃的定位与修复、suite 级失败隔离 + 断点补跑、试跑残留 eval JSON 的清理
