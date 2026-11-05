@@ -15,11 +15,9 @@
 | `src/analyze_results.py` | 读取结果 JSON，统计 ASR、Utility 和模型间差异 |
 | `src/check_results.py` | **离线校验**样本数量、日志数量和统计一致性 |
 | `results/` | 已完成测试的分域汇总 JSON、episode 轨迹及执行记录 |
-| `report/` | （不入库）报告正文生成与排版脚本，负责人本地维护 |
 | `data/official_eval_results/` | 论文作者公开的参考实验数据 |
 | `文章参考/` | 论文与课堂汇报材料 |
 | `claude-dialogue-session.txt` | 复现负责人的 AI 辅助工作对话导出（见第 7 节） |
-| `课程报告.docx` | 不入库（负责人直接分发）；本地修改前先创建副本 |
 
 建议组员先阅读第 2 章实验复现，再重点看 `src/agentdojo/attacks/baseline_attacks.py` 和 `src/README.md`。
 
@@ -54,7 +52,7 @@ python src/analyze_results.py --compare
 
 成功后可以看到三个模型的汇总统计与论文参考数据。**建议优先在已保存的 JSON 上完成结果分析和图表制作**，不必每次重新请求模型。
 
-报告的重新生成与排版检查依赖不入库的 `report/` 目录（含报告全文的生成脚本 `write_report.py`），该流程由负责人在本地完成；组员如需修改报告，请直接联系负责人。第三章及以后的组员内容不会被自动替换。
+课程报告（`课程报告.docx`）及其生成脚本不在仓库中，由负责人在本地维护和重新生成；组员如需修改报告，请直接联系负责人。第三章及以后的组员内容不会被报告生成流程覆盖。
 
 ## 3. 实验设计与已有结果
 
@@ -126,7 +124,7 @@ cd ..
 - **安装后找不到 `agentdojo`**：请先 `cd src` 再运行 `python -m agentdojo.scripts.benchmark`，或执行仓库根目录的脚本入口。
 - **429 / RateLimitError**：服务商限流；检查失败日志后重试。批处理可复用相同日志目录断点续跑，但应先确认参数未变。
 - **389 vs 410**：389 是正式 ASR 评测分母，410 是包含 21 条可行性校验的日志数，不应直接使用 410 计算 ASR。
-- **报告和 JSON 不一致**：先看 `results/执行记录.md` 和 `src/analyze_results.py`；不要手工改表格数值后忘记修改生成脚本。
+- **报告和 JSON 不一致**：报告数值由生成脚本从结果 JSON 程序化计算（脚本由负责人维护）。先核对 `results/执行记录.md` 和 `python src/analyze_results.py` 的输出，确认是哪一版数据后再找负责人更新报告。
 - **模型名称变化**：首先检查 `src/agentdojo/models.py` 与真实 API 响应，不要直接把 provider 的模型别名当成固定版本。
 
 组员修改时优先新开分支，通过 Pull Request 合并；对结果、报告和代码都保留可追溯记录。
