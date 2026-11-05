@@ -20,6 +20,18 @@
 
 建议组员先阅读第 2 章实验复现，再重点看 `src/agentdojo/attacks/baseline_attacks.py` 和 `src/README.md`。
 
+**接手时建议按目标选择入口：**
+
+| 需要做的工作 | 从哪里开始 | 完成后提交什么 |
+|---|---|---|
+| 理解论文、准备课程汇报 | `文章参考/`、报告第一和第二章 | 论文总结、问题分析 |
+| 复核已完成的实验 | `python src/check_results.py`、`python src/analyze_results.py --compare` | 经核验的 ASR / Utility 表格，说明统计口径 |
+| 继续改进攻击或做防御实验 | `src/agentdojo/attacks/`、`src/run_batch.sh` | 独立配置的新增日志、对照结果和代码改动 |
+| 撰写或修改课程报告 | `课程报告.docx`、`report/` | Word 文档及必要的复现说明 |
+
+完整实验日志已经在仓库里，**刚接手时不要重复执行所有付费实验**。如需要进行新的模型对照，先固定模型版本和参数，用独立输出路径保存结果。
+
+
 ## 2. 五分钟上手：不调用付费 API
 
 下面以 macOS / Linux / WSL 的 Bash 为例（需要有仓库访问权限）。
@@ -45,7 +57,14 @@ python src/analyze_results.py --compare
 python report/write_report.py
 ```
 
-该命令会重新写入 `课程报告.docx` 的前两章。请先自行备份或使用新分支；第三章及以后的组员内容不应被自动替换。文档渲染效果可以查看 `report/review_contact.png`，也可用 Word 或 LibreOffice 检查。
+该命令会重新写入 `课程报告.docx` 的前两章，**不会自动备份**。推荐先运行下面两条命令，以免误覆盖组员的修改：
+
+```bash
+mkdir -p report/.local-backups
+cp 课程报告.docx report/.local-backups/课程报告_修改前.docx
+```
+
+本地备份目录已加入 `.gitignore`，不会误提交到仓库。第三章及以后的组员内容不应被自动替换。文档渲染效果可以查看 `report/review_contact.png`，也可用 Word 或 LibreOffice 检查。
 
 ## 3. 实验设计与已有结果
 
