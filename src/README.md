@@ -20,7 +20,7 @@ chatInject_reproduction/
 ├── data/
 │   └── official_eval_results/  # 论文官方原始实验输出（用于对比，GLM-4.5 等）
 ├── results/                    # 实验输出（logs/ + 每组设置的 per-suite JSON）
-├── report/                     # 报告图表与文档写入脚本
+├── report/                     # （不入库）报告图表与文档写入脚本，负责人本地维护
 ├── 文章参考/                    # 论文 PDF、PPT、笔记
 ├── 课程报告.docx
 └── api_key.txt                 # API key（格式：每行 "provider: key"，如 "deepseek: sk-xxx"）
@@ -142,5 +142,5 @@ cd src && ~/.venvs/chatinject/bin/python analyze_results.py --compare   # 三模
 - **调用与统计**：修复了单次 runner 的 `extra_body` 参数转发，以及对已经是百分数的 ASR/Utility 再乘 100 的错误；历史 DeepSeek 良性汇总文件的 9122.81% 修正为 91.23%。
 - **状态完整性**：基准测试某 suite 失败时将返回非零退出码，批处理脚本累计失败数量并以非零状态结束。
 - **结论范围**：报告只讨论所测模型与 API 的观察结果；“模型免疫”“服务端过滤 token”“模板结构识别是必要条件”均没有独立证据，暂不作为已证明的机制结论。
-- **文件生成**：修改源数据或报告代码后，通过 `python report/write_report.py` 重新生成根目录的 `课程报告.docx`，并进行 Word/PDF 排版检查。
+- **文件生成**：报告与其生成脚本（`report/write_report.py`）不入库，由负责人本地维护；修改后重新生成 `课程报告.docx` 并做 Word/PDF 排版检查。
 - **静态一致性检查**：执行 `python src/check_results.py` 验证三模型的样本量、日志文件数量与成功数计算。

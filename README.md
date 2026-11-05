@@ -4,7 +4,7 @@
 
 **入口**： [详细实验手册](src/README.md) · [实验执行记录](results/执行记录.md) · [原论文与课堂资料](文章参考/) · [官方 ChatInject 仓库](https://github.com/hwanchang00/chatinject)
 
-> 课程报告（`课程报告.docx`）**不入库**，由复现负责人直接分发给组员；本仓库仅包含报告的生成代码（`report/`）。
+> 课程报告（`课程报告.docx`）及其生成代码（`report/`）均**不入库**，由复现负责人在本地维护并直接分发给组员。
 
 ## 1. 目录与分工
 
@@ -15,7 +15,7 @@
 | `src/analyze_results.py` | 读取结果 JSON，统计 ASR、Utility 和模型间差异 |
 | `src/check_results.py` | **离线校验**样本数量、日志数量和统计一致性 |
 | `results/` | 已完成测试的分域汇总 JSON、episode 轨迹及执行记录 |
-| `report/` | Word 报告的正文生成、图表和三线表排版程序 |
+| `report/` | （不入库）报告正文生成与排版脚本，负责人本地维护 |
 | `data/official_eval_results/` | 论文作者公开的参考实验数据 |
 | `文章参考/` | 论文与课堂汇报材料 |
 | `claude-dialogue-session.txt` | 复现负责人的 AI 辅助工作对话导出（见第 7 节） |
@@ -30,7 +30,7 @@
 | 理解论文、准备课程汇报 | `文章参考/`、报告第一和第二章 | 论文总结、问题分析 |
 | 复核已完成的实验 | `python src/check_results.py`、`python src/analyze_results.py --compare` | 经核验的 ASR / Utility 表格，说明统计口径 |
 | 继续改进攻击或做防御实验 | `src/agentdojo/attacks/`、`src/run_batch.sh` | 独立配置的新增日志、对照结果和代码改动 |
-| 撰写或修改课程报告 | `课程报告.docx`、`report/` | Word 文档及必要的复现说明 |
+| 撰写或修改课程报告 | 联系负责人获取 `课程报告.docx` 与 `report/`（均不入库） | 修改后的 Word 文档及说明 |
 
 完整实验日志已经在仓库里，**刚接手时不要重复执行所有付费实验**。如需要进行新的模型对照，先固定模型版本和参数，用独立输出路径保存结果。
 
@@ -54,20 +54,7 @@ python src/analyze_results.py --compare
 
 成功后可以看到三个模型的汇总统计与论文参考数据。**建议优先在已保存的 JSON 上完成结果分析和图表制作**，不必每次重新请求模型。
 
-更新数据或报告脚本后，在项目根目录运行：
-
-```bash
-python report/write_report.py
-```
-
-该命令会重新写入 `课程报告.docx` 的前两章，**不会自动备份**。推荐先运行下面两条命令，以免误覆盖组员的修改：
-
-```bash
-mkdir -p report/.local-backups
-cp 课程报告.docx report/.local-backups/课程报告_修改前.docx
-```
-
-本地备份目录已加入 `.gitignore`，不会误提交到仓库。第三章及以后的组员内容不应被自动替换。文档渲染效果可以查看 `report/review_contact.png`，也可用 Word 或 LibreOffice 检查。
+报告的重新生成与排版检查依赖不入库的 `report/` 目录（含报告全文的生成脚本 `write_report.py`），该流程由负责人在本地完成；组员如需修改报告，请直接联系负责人。第三章及以后的组员内容不会被自动替换。
 
 ## 3. 实验设计与已有结果
 
